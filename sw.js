@@ -1,10 +1,10 @@
 // Bump VERSION on every release so installed copies fetch the new files.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = 'recipe-book-' + VERSION;
 const FONT_CACHE = 'recipe-book-fonts'; // survives version bumps
 
 const CORE = [
-  './', './index.html', './style.css?v=2', './parser.js?v=1', './app.js?v=1',
+  './', './index.html', './style.css?v=2', './parser.js?v=1', './app.js?v=2',
   './manifest.webmanifest', './icon.svg', './apple-touch-icon.png', './icon-192.png', './icon-512.png',
 ];
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;900&display=swap';

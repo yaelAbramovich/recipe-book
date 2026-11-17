@@ -16,7 +16,7 @@
     sel: store.get('sel', {}),            // { recipeId: servings }
     checked: store.get('checked', {}),    // { itemId: true }
     extras: store.get('extras', []),      // [{ id, text, done }]
-    q: '', view: {}, draft: null, tab: 'text', busy: false, msg: null,
+    q: '', url: '', txt: '', view: {}, draft: null, tab: 'text', busy: false, msg: null,
   };
   const save = (k) => store.set(k, S[k]);
   const byId = (id) => S.recipes.find((r) => r.id === id);
@@ -158,11 +158,11 @@
     const msg = S.msg ? `<div class="note ${S.msg.err ? 'err' : ''}">${esc(S.msg.text)}</div>` : '';
     let body = '';
     if (t === 'text') body = `<label class="f">הדביקי כאן מתכון</label>
-      <textarea id="txt" rows="12" placeholder="שם המתכון&#10;&#10;מצרכים:&#10;2 כוסות קמח&#10;3 ביצים&#10;&#10;אופן ההכנה:&#10;מערבבים ואופים…"></textarea>
-      <button class="btn block" style="margin-top:12px" data-act="parse-text">✨ זיהוי מתכון</button>`;
+      <textarea id="txt" rows="12" placeholder="שם המתכון&#10;&#10;מצרכים:&#10;2 כוסות קמח&#10;3 ביצים&#10;&#10;אופן ההכנה:&#10;מערבבים ואופים…">${esc(S.txt)}</textarea>
+      <button class="btn block" id="go-text" style="margin-top:12px" data-act="parse-text" ${S.txt.trim() ? '' : 'disabled'}>✨ זיהוי מתכון</button>`;
     if (t === 'url') body = `<label class="f">קישור למתכון באתר</label>
-      <input type="url" id="url" class="ltr" inputmode="url" placeholder="https://…">
-      <button class="btn block" style="margin-top:12px" data-act="parse-url" ${S.busy ? 'disabled' : ''}>${S.busy ? '<span class="spin"></span> מביא…' : '🔗 ייבוא מהקישור'}</button>
+      <input type="url" id="url" class="ltr" inputmode="url" placeholder="https://…" value="${esc(S.url)}">
+      <button class="btn block" id="go-url" style="margin-top:12px" data-act="parse-url" ${S.busy || !S.url.trim() ? 'disabled' : ''}>${S.busy ? '<span class="spin"></span> מביא…' : '🔗 ייבוא מהקישור'}</button>
       <p class="sub" style="margin-top:10px">הקישור נשלח לשירות עזר כדי לקרוא את הדף. אם האתר חוסם — פשוט העתיקי את הטקסט ללשונית "טקסט".</p>`;
     if (t === 'file') body = `<label class="drop" for="file"><div style="font-size:40px">📄</div><b>בחירת קובץ</b><br>txt, pdf, html (או גיבוי json)
       <input type="file" id="file" accept=".txt,.md,.pdf,.html,.htm,.json,text/plain,application/pdf,text/html,application/json"></label>`;
@@ -231,7 +231,7 @@
     }
     S.draft = { title: r.title || '', servings: r.servings || null, ingredients: r.ingredients, steps: r.steps, source: r.source || '', fromImport: true,
       warn: via === 'text' && r.source ? 'הדף לא כלל מתכון מסודר, אז הזיהוי הוא ניחוש — בדקי היטב.' : '' };
-    S.msg = null; S.busy = false;
+    S.msg = null; S.busy = false; S.url = ''; S.txt = '';
     location.hash = '#/edit/new';
   }
 
@@ -359,7 +359,7 @@
       }
       case 'parse-url': {
         const u = $('#url').value.trim(); if (!u) { toast('הדביקי קישור'); break; }
-        S.busy = true; S.msg = null; render(); $('#url').value = u;
+        S.url = u; S.busy = true; S.msg = null; render();
         const r = await importUrl(u);
         if (!r) { S.busy = false; S.msg = { err: true, text: 'לא הצלחנו להביא את הדף (ייתכן שהאתר חוסם גישה). העתיקי את טקסט המתכון ללשונית "טקסט".' }; render(); }
         else finishImport(r, r.via);
@@ -379,6 +379,8 @@
   });
 
   document.addEventListener('input', (e) => {
+    if (e.target.id === 'url') { S.url = e.target.value; $('#go-url').disabled = S.busy || !S.url.trim(); }
+    if (e.target.id === 'txt') { S.txt = e.target.value; $('#go-text').disabled = !S.txt.trim(); }
     if (e.target.id === 'q') { S.q = e.target.value; $('#list').innerHTML = listHtml(); }
   });
   document.addEventListener('change', (e) => {
