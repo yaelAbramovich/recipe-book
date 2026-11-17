@@ -134,7 +134,7 @@
     if (!r) return `<div class="empty"><p>המתכון לא נמצא</p></div>`;
     const imported = isNew && S.draft && S.draft.fromImport;
     return `<div class="top"><a class="iconbtn" href="${isNew ? '#/add' : '#/r/' + r.id}" style="display:grid;place-items:center;text-decoration:none">→</a><h1>${isNew ? 'מתכון חדש' : 'עריכת מתכון'}</h1></div>
-      ${imported ? `<div class="note">✨ זיהינו את המתכון. כדאי לעבור על זה ולתקן לפני השמירה.</div>` : ''}
+      ${imported ? `<div class="note ${S.draft.fromImage ? 'err' : ''}">${S.draft.fromImage ? '📷 הטקסט זוהה מתמונה — זיהוי עברית לא מושלם, במיוחד במספרים (למשל 200 עלול לצאת 0). בדקי כל כמות לפני השמירה.' : '✨ זיהינו את המתכון. כדאי לעבור על זה ולתקן לפני השמירה.'}</div>` : ''}
       ${S.draft && S.draft.warn ? `<div class="note err">${esc(S.draft.warn)}</div>` : ''}
       <form id="editor" data-id="${esc(id)}" autocomplete="off">
         <label class="f">שם המתכון</label>
@@ -164,8 +164,8 @@
       <input type="url" id="url" class="ltr" inputmode="url" placeholder="https://…" value="${esc(S.url)}">
       <button class="btn block" id="go-url" style="margin-top:12px" data-act="parse-url" ${S.busy || !S.url.trim() ? 'disabled' : ''}>${S.busy ? '<span class="spin"></span> מביא…' : '🔗 ייבוא מהקישור'}</button>
       <p class="sub" style="margin-top:10px">הקישור נשלח לשירות עזר כדי לקרוא את הדף. אם האתר חוסם — פשוט העתיקי את הטקסט ללשונית "טקסט".</p>`;
-    if (t === 'file') body = `<label class="drop" for="file"><div style="font-size:40px">📄</div><b>בחירת קובץ</b><br>txt, pdf, html (או גיבוי json)
-      <input type="file" id="file" accept=".txt,.md,.pdf,.html,.htm,.json,text/plain,application/pdf,text/html,application/json"></label>`;
+    if (t === 'file') body = `<label class="drop" for="file"><div style="font-size:40px">📄</div><b>בחירת קובץ או תמונה</b><br>תמונה / צילום מסך, pdf, txt, html (או גיבוי json)
+      <input type="file" id="file" accept="image/*,.txt,.md,.pdf,.html,.htm,.json,text/plain,application/pdf,text/html,application/json"></label>`;
     return `<h1>הוספת מתכון</h1>${seg}${msg}${body}
       <p class="sub" style="margin-top:22px;text-align:center">או <a href="#/edit/new" data-act="manual">כתיבה ידנית משדה ריק</a></p>`;
   }
@@ -229,7 +229,7 @@
       S.msg = { err: true, text: 'לא הצלחנו לזהות מתכון בתוכן הזה. נסי להעתיק את הטקסט ללשונית "טקסט", או לכתוב ידנית.' };
       S.busy = false; render(); return;
     }
-    S.draft = { title: r.title || '', servings: r.servings || null, ingredients: r.ingredients, steps: r.steps, source: r.source || '', fromImport: true,
+    S.draft = { title: r.title || '', servings: r.servings || null, ingredients: r.ingredients, steps: r.steps, source: r.source || '', fromImport: true, fromImage: !!r.fromImage,
       warn: via === 'text' && r.source ? 'הדף לא כלל מתכון מסודר, אז הזיהוי הוא ניחוש — בדקי היטב.' : '' };
     S.msg = null; S.busy = false; S.url = ''; S.txt = '';
     location.hash = '#/edit/new';
@@ -296,6 +296,34 @@
     return out.join('\n');
   }
 
+  // ---- OCR for photos / screenshots of recipes (Tesseract, loaded on demand; language data cached after first use) ----
+  const TESS_VER = '5.1.1';
+  let tessLoading;
+  function loadTesseract() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    return (tessLoading = tessLoading || new Promise((ok, no) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@' + TESS_VER + '/dist/tesseract.min.js';
+      s.onload = () => ok(window.Tesseract);
+      s.onerror = () => { tessLoading = null; no(new Error('tesseract')); };
+      document.head.appendChild(s);
+    }));
+  }
+  function setStatus(text) { S.msg = { text }; const n = $('.note'); if (n) n.textContent = text; }
+  async function imageToText(file) {
+    setStatus('טוען מנוע זיהוי טקסט…');
+    const T = await loadTesseract();
+    const bmp = await createImageBitmap(file);
+    const long = Math.max(bmp.width, bmp.height), k = long > 2200 ? 2200 / long : long < 1600 ? 1600 / long : 1;   // shrink huge phone photos, enlarge small screenshots
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    const worker = await T.createWorker('heb', 1, { logger: (m) => {
+      if (m.status === 'recognizing text') setStatus('מזהה טקסט… ' + Math.round(m.progress * 100) + '%');
+      else if (/language/.test(m.status || '')) setStatus('מוריד נתוני שפה עברית (פעם ראשונה בלבד)…');
+    } });
+    try { await worker.setParameters({ tessedit_pageseg_mode: '6' }); return (await worker.recognize(cv)).data.text; } finally { await worker.terminate(); }
+  }
+
   async function handleFile(file) {
     S.busy = true; S.msg = { text: 'קורא את הקובץ…' }; render();
     try {
@@ -311,14 +339,17 @@
         throw new Error('json');
       }
       let r;
-      if (name.endsWith('.pdf')) r = P.parseRecipeText(await pdfToText(file));
+      if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|gif|bmp)$/.test(name)) r = P.parseRecipeText(await imageToText(file));
+      else if (name.endsWith('.pdf')) r = P.parseRecipeText(await pdfToText(file));
       else if (/\.html?$/.test(name)) r = P.recipeFromHtml(await file.text(), '');
       else r = P.parseRecipeText(await file.text());
       if (!r.title) r.title = file.name.replace(/\.[^.]+$/, '');
+      r.fromImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|gif|bmp)$/.test(name);
       finishImport(r, 'file');
     } catch (e) {
       S.busy = false;
-      S.msg = { err: true, text: name_is_pdf(file) ? 'לא הצלחנו לקרוא את ה־PDF (נדרש חיבור לאינטרנט, וקבצים סרוקים כתמונה לא נתמכים). נסי להעתיק את הטקסט.' : 'לא הצלחנו לקרוא את הקובץ.' };
+      S.msg = { err: true, text: name_is_pdf(file) ? 'לא הצלחנו לקרוא את ה־PDF (נדרש חיבור לאינטרנט, וקבצים סרוקים כתמונה לא נתמכים). נסי להעתיק את הטקסט.'
+        : file.type.startsWith('image/') ? 'לא הצלחנו לזהות טקסט בתמונה. בפעם הראשונה נדרש חיבור לאינטרנט; כדאי גם לצלם ישר, באור טוב.' : 'לא הצלחנו לקרוא את הקובץ.' };
       render();
     }
   }
