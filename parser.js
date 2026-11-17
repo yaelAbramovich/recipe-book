@@ -114,7 +114,8 @@
   }
 
   function cleanBullet(line) {
-    return norm(line).replace(/^[•●○▪◦·*•·▪●○◦►▶✓✔☐□-]+\s*/, '').replace(/^\[\s?\]\s*/, '');
+    return norm(line).replace(/^[•●○▪◦·*•·▪●○◦►▶✓✔☐□+-]+\s*/, '').replace(/^\[\s?\]\s*/, '')
+      .replace(/^%\s*(?=(כוס|כף|כפית|ק"ג|ליטר|חבילה))/, '½ ');      // OCR often reads "½" as "%"
   }
 
   /** Parse one ingredient line -> { raw, qty|null, unit|'' , name, note, header } */
@@ -272,9 +273,9 @@
   }
 
   // ---------- free-text recipe parsing ----------
-  const ING_H = /^(המצרכים|מצרכים|המרכיבים|מרכיבים|רכיבים|חומרים|מה צריך|מצרכים ל.*|רשימת מצרכים|לבצק|למילוי)\s*[:：]?\s*$/;
+  const ING_H = /^(המצרכים|מצרכים|המרכיבים|מרכיבים|רכיבים|חומרים|מה צרי[ךר]\??|מצרכים ל.*|רשימת מצרכים|לבצק|למילוי)\s*[:：]?\s*$/;
   const STEP_H = /^(אופן ה?הכנה|ההכנה|הכנה|הוראות( הכנה)?|דרך ה?הכנה|שיטת ה?הכנה|אופן הכנה|אופן הכנת.*|שלבי ה?הכנה)\s*[:：]?\s*$/;
-  const MAIN_ING_H = /^(המצרכים|מצרכים|המרכיבים|מרכיבים|רכיבים|חומרים|מה צריך|רשימת מצרכים)(?=[\s:：]|$)/;
+  const MAIN_ING_H = /^(המצרכים|מצרכים|המרכיבים|מרכיבים|רכיבים|חומרים|מה צרי[ךר]|רשימת מצרכים)(?=[\s:：?]|$)/;
 
   function findServings(lines) {
     for (const l of lines) {
@@ -292,8 +293,10 @@
   }
 
   function cleanStep(l) {
-    return norm(l).replace(/^(\d+[.)]|[•*•·▪●○◦-])\s*/, '').replace(/^שלב\s*\d+\s*[:.-]?\s*/, '');
+    return norm(l).replace(/^(\d+[.)]|[•*·▪●○◦+-])\s*/, '').replace(/^שלב\s*\d+\s*[:.-]?\s*/, '');
   }
+
+  const BULLET = /^[•●○▪◦·*►▶✓✔☐□+-]\s*/;
 
   function parseRecipeText(text) {
     const lines = String(text || '').split(/\r?\n/).map(norm).filter(Boolean);
@@ -312,7 +315,11 @@
       if (hasIng && ING_H.test(l) && MAIN_ING_H.test(l)) { mode = 'ing'; continue; }
       if (hasStep && STEP_H.test(l)) { mode = 'step'; continue; }
       if (mode === 'pre') pre.push(l);
-      else if (mode === 'ing') {
+      else if (mode === 'step' && out.steps.length && !BULLET.test(l) && !/^\d+[.)]/.test(l) && !/[.!?:]$/.test(out.steps[out.steps.length - 1])) {
+        out.steps[out.steps.length - 1] += ' ' + l;              // wrapped line (OCR / PDF / narrow column)
+      } else if (mode === 'ing' && out.ingredients.length && !BULLET.test(l) && /[\/,]$/.test(out.ingredients[out.ingredients.length - 1])) {
+        out.ingredients[out.ingredients.length - 1] += ' ' + l;
+      } else if (mode === 'ing') {
         // heading-less step text after ingredients: a long sentence without quantity
         const long = l.split(' ').length >= 9 || /[.!]$/.test(l) && l.split(' ').length >= 5;
         if (!hasStep && long && !looksIng(l)) { mode = 'step'; out.steps.push(cleanStep(l)); }

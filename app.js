@@ -16,7 +16,7 @@
     sel: store.get('sel', {}),            // { recipeId: servings }
     checked: store.get('checked', {}),    // { itemId: true }
     extras: store.get('extras', []),      // [{ id, text, done }]
-    q: '', url: '', txt: '', view: {}, draft: null, tab: 'text', busy: false, msg: null,
+    crop: null, q: '', url: '', txt: '', view: {}, draft: null, tab: 'text', busy: false, msg: null,
   };
   const save = (k) => store.set(k, S[k]);
   const byId = (id) => S.recipes.find((r) => r.id === id);
@@ -151,7 +151,61 @@
       </form>`;
   }
 
+  function cropView() {
+    const c = S.crop, r = c.rect;
+    const box = r ? `left:${r.x * 100}%;top:${r.y * 100}%;width:${r.w * 100}%;height:${r.h * 100}%` : 'display:none';
+    const msg = S.msg ? `<div class="note ${S.msg.err ? 'err' : ''}">${esc(S.msg.text)}</div>` : '';
+    return `<div class="top"><button class="iconbtn" data-act="crop-cancel" aria-label="ביטול">→</button><h1>סימון אזור המתכון</h1></div>
+      <p class="sub">${c.draw ? 'גררי עם האצבע על התמונה כדי לסמן את אזור המתכון.' : 'כדי לקבל זיהוי טוב יותר, סמני רק את אזור המתכון (בלי שאר המסך). או זהי את כל התמונה.'}</p>
+      ${msg}
+      <div class="cropwrap ${c.draw ? 'draw' : ''}" id="cropwrap"><img id="cropimg" src="${esc(c.url)}" alt="" draggable="false"><div class="cropbox" id="cropbox" style="${box}"></div></div>
+      <div class="actions">
+        <button class="btn ghost" data-act="crop-draw" ${S.busy ? 'disabled' : ''}>${c.draw ? '✋ גלילה' : r ? '✂ סימון מחדש' : '✂ סימון אזור'}</button>
+        <button class="btn" data-act="crop-go" ${S.busy ? 'disabled' : ''}>${S.busy ? '<span class="spin"></span> קורא…' : r ? '✨ זיהוי האזור' : '✨ זיהוי כל התמונה'}</button>
+      </div>`;
+  }
+
+  async function runOcr() {
+    const c = S.crop;
+    S.busy = true; S.msg = { text: 'מתחיל…' }; render();
+    try {
+      const r = P.parseRecipeText(await imageToText(c.file, c.rect));
+      r.fromImage = true;
+      // OCR reads "½" as "4"; a singular "4 כוס/כפית" is ungrammatical Hebrew, so it is almost surely ½ (images only)
+      r.ingredients = r.ingredients.map((l) => l.replace(/^4\s+(?=(כוס|כפית)(\s|$))/, '½ '));
+      URL.revokeObjectURL(c.url); S.crop = null;
+      finishImport(r, 'file');
+    } catch (e) {
+      S.busy = false;
+      S.msg = { err: true, text: 'לא הצלחנו לזהות טקסט בתמונה. בפעם הראשונה נדרש חיבור לאינטרנט.' }; render();
+    }
+  }
+
+  // drag-to-select on the preview image (only while "draw" mode is on, so the page can still scroll normally)
+  let dragStart = null;
+  document.addEventListener('pointerdown', (e) => {
+    const w = e.target.closest('#cropwrap'); if (!w || !S.crop || !S.crop.draw) return;
+    const b = $('#cropimg').getBoundingClientRect();
+    dragStart = { x: Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), y: Math.min(1, Math.max(0, (e.clientY - b.top) / b.height)) };
+    w.setPointerCapture(e.pointerId);
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!dragStart) return;
+    const b = $('#cropimg').getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), y = Math.min(1, Math.max(0, (e.clientY - b.top) / b.height));
+    const r = { x: Math.min(dragStart.x, x), y: Math.min(dragStart.y, y), w: Math.abs(x - dragStart.x), h: Math.abs(y - dragStart.y) };
+    S.crop.rect = r;
+    const el = $('#cropbox'); el.style.cssText = `left:${r.x * 100}%;top:${r.y * 100}%;width:${r.w * 100}%;height:${r.h * 100}%`;
+  });
+  const endDrag = () => {
+    if (!dragStart) return; dragStart = null;
+    if (S.crop.rect && (S.crop.rect.w < 0.05 || S.crop.rect.h < 0.03)) S.crop.rect = null;   // accidental tap
+    S.crop.draw = false; render();
+  };
+  document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag);
+
   function viewImport() {
+    if (S.crop) return cropView();
     const t = S.tab;
     const seg = `<div class="seg" role="tablist">
       ${[['text', '✍ טקסט'], ['url', '🔗 קישור'], ['file', '📄 קובץ']].map(([k, l]) => `<button role="tab" data-act="tab" data-k="${k}" aria-selected="${t === k}">${l}</button>`).join('')}</div>`;
@@ -310,21 +364,61 @@
     }));
   }
   function setStatus(text) { S.msg = { text }; const n = $('.note'); if (n) n.textContent = text; }
-  async function imageToText(file) {
+  // Recipe cards are often two columns (ingredients | method). Find a blank vertical strip near the middle and
+  // return its x position, so each column can be read separately instead of Tesseract interleaving the lines.
+  function findColumnGap(cv) {
+    const w = cv.width, h = cv.height;
+    const d = cv.getContext('2d').getImageData(0, 0, w, h).data;
+    const dark = new Uint32Array(w);
+    for (let y = 0; y < h; y += 2) for (let x = 0, i = y * w * 4; x < w; x++, i += 4) if (d[i] < 120) dark[x]++;
+    const limit = Math.max(2, h * 0.002);
+    let best = { s: 0, len: 0 }, run = 0, start = 0;
+    for (let x = Math.floor(w * 0.25); x < Math.ceil(w * 0.75); x++) {
+      if (dark[x] <= limit) { if (!run) start = x; run++; if (run > best.len) best = { s: start, len: run }; } else run = 0;
+    }
+    return best.len >= w * 0.018 ? Math.round(best.s + best.len / 2) : null;
+  }
+
+  async function imageToText(file, rect) {
     setStatus('טוען מנוע זיהוי טקסט…');
     const T = await loadTesseract();
     const bmp = await createImageBitmap(file);
-    const long = Math.max(bmp.width, bmp.height), k = long > 2200 ? 2200 / long : long < 1600 ? 1600 / long : 1;   // shrink huge phone photos, enlarge small screenshots
-    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
-    const worker = await T.createWorker('heb', 1, { logger: (m) => {
-      if (m.status === 'recognizing text') setStatus('מזהה טקסט… ' + Math.round(m.progress * 100) + '%');
-      else if (/language/.test(m.status || '')) setStatus('מוריד נתוני שפה עברית (פעם ראשונה בלבד)…');
-    } });
-    try { await worker.setParameters({ tessedit_pageseg_mode: '6' }); return (await worker.recognize(cv)).data.text; } finally { await worker.terminate(); }
+    const r = rect || { x: 0, y: 0, w: 1, h: 1 };
+    const sx = r.x * bmp.width, sy = r.y * bmp.height, sw = r.w * bmp.width, sh = r.h * bmp.height;
+    let k = Math.max(0.5, Math.min(4, 2200 / sw));                      // small text needs enlarging; huge photos shrink
+    if (sw * sh * k * k > 20e6) k = Math.sqrt(20e6 / (sw * sh));         // keep the canvas within phone memory limits
+    const cv = document.createElement('canvas'); cv.width = Math.round(sw * k); cv.height = Math.round(sh * k);
+    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.imageSmoothingQuality = 'high';
+    cx.filter = 'grayscale(1) contrast(1.6)';      // measurably better on screenshots with coloured backgrounds
+    cx.drawImage(bmp, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+    // "best" Hebrew model is far more accurate than the default fast one; cached in IndexedDB after the first download
+    const worker = await T.createWorker('heb', 1, {
+      langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/heb/4.0.0_best_int', gzip: true,
+      logger: (m) => {
+        if (m.status === 'recognizing text') setStatus('מזהה טקסט… ' + Math.round(m.progress * 100) + '%');
+        else if (/language|traineddata/.test(m.status || '')) setStatus('מוריד נתוני שפה עברית (פעם ראשונה בלבד, כמה שניות)…');
+      } });
+    try {
+      await worker.setParameters({ tessedit_pageseg_mode: '3' });
+      const gap = rect ? findColumnGap(cv) : null;                         // only for a user-marked area (a full screenshot has no clean gap)
+      if (!gap) return (await worker.recognize(cv)).data.text;
+      const part = (x0, x1) => { const c = document.createElement('canvas'); c.width = x1 - x0; c.height = cv.height; c.getContext('2d').drawImage(cv, x0, 0, x1 - x0, cv.height, 0, 0, x1 - x0, cv.height); return c; };
+      await worker.setParameters({ tessedit_pageseg_mode: '6' });            // a single column is one uniform block
+      setStatus('מזהה טקסט… (עמודה 1 מתוך 2)');
+      const right = (await worker.recognize(part(gap, cv.width))).data.text;   // Hebrew reads right-to-left: right column first
+      setStatus('מזהה טקסט… (עמודה 2 מתוך 2)');
+      const left = (await worker.recognize(part(0, gap))).data.text;
+      return right + '\n' + left;
+    } finally { await worker.terminate(); }
   }
 
+  const isImage = (f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|gif|bmp)$/i.test(f.name);
   async function handleFile(file) {
+    if (isImage(file)) {
+      if (S.crop) URL.revokeObjectURL(S.crop.url);
+      S.crop = { file, url: URL.createObjectURL(file), rect: null, draw: false };
+      S.busy = false; S.msg = null; render(); return;
+    }
     S.busy = true; S.msg = { text: 'קורא את הקובץ…' }; render();
     try {
       const name = file.name.toLowerCase();
@@ -339,17 +433,15 @@
         throw new Error('json');
       }
       let r;
-      if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|gif|bmp)$/.test(name)) r = P.parseRecipeText(await imageToText(file));
-      else if (name.endsWith('.pdf')) r = P.parseRecipeText(await pdfToText(file));
+      if (name.endsWith('.pdf')) r = P.parseRecipeText(await pdfToText(file));
       else if (/\.html?$/.test(name)) r = P.recipeFromHtml(await file.text(), '');
       else r = P.parseRecipeText(await file.text());
       if (!r.title) r.title = file.name.replace(/\.[^.]+$/, '');
-      r.fromImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|gif|bmp)$/.test(name);
       finishImport(r, 'file');
     } catch (e) {
       S.busy = false;
       S.msg = { err: true, text: name_is_pdf(file) ? 'לא הצלחנו לקרוא את ה־PDF (נדרש חיבור לאינטרנט, וקבצים סרוקים כתמונה לא נתמכים). נסי להעתיק את הטקסט.'
-        : file.type.startsWith('image/') ? 'לא הצלחנו לזהות טקסט בתמונה. בפעם הראשונה נדרש חיבור לאינטרנט; כדאי גם לצלם ישר, באור טוב.' : 'לא הצלחנו לקרוא את הקובץ.' };
+        : 'לא הצלחנו לקרוא את הקובץ.' };
       render();
     }
   }
@@ -384,6 +476,9 @@
       case 'del': if (confirm('למחוק את המתכון?')) { S.recipes = S.recipes.filter((r) => r.id !== id); delete S.sel[id]; save('recipes'); save('sel'); location.hash = '#/'; toast('המתכון נמחק'); } break;
       case 'tab': S.tab = el.dataset.k; S.msg = null; render(); break;
       case 'manual': S.draft = null; break;
+      case 'crop-draw': S.crop.draw = !S.crop.draw; render(); break;
+      case 'crop-go': runOcr(); break;
+      case 'crop-cancel': URL.revokeObjectURL(S.crop.url); S.crop = null; S.msg = null; S.busy = false; render(); break;
       case 'parse-text': {
         const t = $('#txt').value.trim(); if (!t) { toast('הדביקי קודם טקסט'); break; }
         finishImport(P.parseRecipeText(t), 'text'); break;

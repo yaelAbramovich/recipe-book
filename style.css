@@ -134,3 +134,9 @@ label.f small { font-weight: 400; color: var(--muted); }
 @keyframes sp { to { transform: rotate(360deg); } }
 @media print { .tabbar, .selbar, .actions, .top .iconbtn { display: none !important; } }
 .selbar span { white-space: nowrap; }
+
+/* image crop step */
+.cropwrap { position: relative; overflow: hidden; border-radius: 12px; touch-action: pan-y; user-select: none; -webkit-user-select: none; box-shadow: var(--shadow); }
+.cropwrap.draw { touch-action: none; cursor: crosshair; outline: 3px solid var(--brand); }
+.cropwrap img { width: 100%; display: block; pointer-events: none; -webkit-touch-callout: none; }
+.cropbox { position: absolute; border: 3px solid var(--brand); border-radius: 4px; box-shadow: 0 0 0 9999px rgba(0,0,0,.5); pointer-events: none; }
