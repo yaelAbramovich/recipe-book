@@ -1,0 +1,136 @@
+:root {
+  --bg: #fff8f1; --card: #ffffff; --ink: #2b2118; --muted: #7a6a5c; --line: #efe2d4;
+  --brand: #d94f30; --brand-ink: #ffffff; --brand-soft: #fde6dd; --ok: #3d7a4f; --ok-soft: #e3f1e7;
+  --danger: #b3261e; --shadow: 0 1px 2px rgba(60,30,10,.08), 0 4px 14px rgba(60,30,10,.06);
+  --nav-h: 64px; --r: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1b1511; --card: #271f19; --ink: #f6ece2; --muted: #b3a191; --line: #3a2e25;
+    --brand: #f0694a; --brand-ink: #1b1511; --brand-soft: #4a2519; --ok: #7ccb94; --ok-soft: #1f3a29; --danger: #ff8a80;
+    --shadow: 0 1px 2px rgba(0,0,0,.4); }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font-family: 'Heebo', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; font-size: 17px; line-height: 1.5;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); }
+[hidden] { display: none !important; }
+button, input, textarea, select { font: inherit; color: inherit; }
+a { color: var(--brand); }
+
+.view { max-width: 640px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 14px) 16px 24px; }
+h1 { font-size: 26px; font-weight: 900; margin: 6px 0 12px; }
+h2 { font-size: 19px; font-weight: 700; margin: 22px 0 8px; }
+.sub { color: var(--muted); font-size: 14px; margin: 0; }
+
+/* buttons */
+.btn { appearance: none; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; cursor: pointer;
+  background: var(--brand); color: var(--brand-ink); min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+.btn.ghost { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn.soft { background: var(--brand-soft); color: var(--brand); }
+.btn.danger { background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn.wa { background: #25d366; color: #05331a; }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: .55; }
+.btn:active { transform: scale(.98); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > .btn { flex: 1 1 0; }
+.iconbtn { appearance: none; border: 0; background: var(--card); box-shadow: inset 0 0 0 1.5px var(--line); border-radius: 12px;
+  width: 44px; height: 44px; font-size: 20px; cursor: pointer; flex: none; }
+
+/* header */
+.top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.top h1 { margin: 0; flex: 1; font-size: 22px; }
+
+/* inputs */
+input[type=text], input[type=url], input[type=search], input[type=number], textarea {
+  width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px 14px; outline: none; }
+input:focus, textarea:focus { border-color: var(--brand); }
+textarea { min-height: 140px; resize: vertical; line-height: 1.6; }
+label.f { display: block; font-weight: 700; font-size: 14px; margin: 14px 0 6px; }
+label.f small { font-weight: 400; color: var(--muted); }
+.ltr { direction: ltr; text-align: left; }
+
+/* recipe cards */
+.search { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 6px 0 10px; }
+.cards { display: grid; gap: 10px; }
+.card { display: flex; align-items: stretch; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden;
+  border: 2px solid transparent; }
+.card.sel { border-color: var(--brand); background: var(--brand-soft); }
+.card .pick { appearance: none; border: 0; background: transparent; width: 58px; font-size: 24px; cursor: pointer; color: var(--muted); flex: none; }
+.card.sel .pick { color: var(--brand); }
+.card .main { flex: 1; padding: 14px 4px 14px 14px; text-decoration: none; color: inherit; min-width: 0; }
+.card h3 { margin: 0 0 2px; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.card .meta { margin: 0; color: var(--muted); font-size: 14px; }
+.empty { text-align: center; padding: 48px 12px; color: var(--muted); }
+.empty .big { font-size: 56px; }
+.foot { margin-top: 28px; text-align: center; font-size: 14px; display: flex; gap: 10px; justify-content: center; }
+.foot button { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 14px; }
+
+/* detail */
+.stepper { display: inline-flex; align-items: center; gap: 4px; background: var(--card); border-radius: 12px; box-shadow: inset 0 0 0 1.5px var(--line); padding: 2px; }
+.stepper button { appearance: none; border: 0; background: transparent; width: 40px; height: 40px; font-size: 22px; font-weight: 700; cursor: pointer; color: var(--brand); }
+.stepper span { min-width: 64px; text-align: center; font-weight: 700; }
+.panel { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 6px 16px; }
+.ing { list-style: none; margin: 0; padding: 0; }
+.ing li { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.ing li:last-child { border: 0; }
+.ing li.h { font-weight: 900; color: var(--brand); padding-top: 14px; }
+.ing small { color: var(--muted); }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.steps li { counter-increment: s; position: relative; padding: 12px 40px 12px 0; border-bottom: 1px solid var(--line); }
+.steps li:last-child { border: 0; }
+.steps li::before { content: counter(s); position: absolute; right: 0; top: 12px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--brand-soft); color: var(--brand); font-weight: 900; font-size: 14px; display: grid; place-items: center; }
+
+/* segmented */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border-radius: 14px; padding: 4px; gap: 4px; box-shadow: inset 0 0 0 1.5px var(--line); margin: 10px 0 16px; }
+.seg button { appearance: none; border: 0; background: transparent; padding: 10px 4px; border-radius: 10px; font-weight: 700; cursor: pointer; color: var(--muted); }
+.seg button[aria-selected=true] { background: var(--brand); color: var(--brand-ink); }
+.note { background: var(--ok-soft); color: var(--ok); border-radius: 12px; padding: 10px 14px; font-size: 14px; margin: 10px 0; }
+.note.err { background: var(--brand-soft); color: var(--danger); }
+.drop { border: 2px dashed var(--line); border-radius: var(--r); padding: 28px 16px; text-align: center; color: var(--muted); background: var(--card); }
+.drop input { display: none; }
+
+/* shopping list */
+.srecipes { display: grid; gap: 8px; margin-bottom: 8px; }
+.srecipe { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 14px; padding: 8px 8px 8px 12px; box-shadow: var(--shadow); }
+.srecipe .t { flex: 1; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.srecipe .stepper button { width: 34px; height: 34px; }
+.srecipe .stepper span { min-width: 52px; font-size: 14px; }
+.cat { margin: 18px 0 6px; font-size: 14px; font-weight: 900; color: var(--brand); letter-spacing: .02em; }
+.items { list-style: none; margin: 0; padding: 0; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); }
+.items li { border-bottom: 1px solid var(--line); }
+.items li:last-child { border: 0; }
+.items label { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
+.items input { width: 22px; height: 22px; accent-color: var(--ok); flex: none; }
+.items .tx { flex: 1; min-width: 0; }
+.items small { display: block; color: var(--muted); font-size: 12px; }
+.items li.done .tx > span { text-decoration: line-through; color: var(--muted); }
+.items .x { appearance: none; border: 0; background: none; color: var(--muted); font-size: 18px; padding: 8px; cursor: pointer; }
+.addrow { display: flex; gap: 8px; margin: 14px 0; }
+.actions { position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px); display: flex; gap: 8px; margin-top: 18px;
+  background: var(--bg); padding: 10px 0; z-index: 2; }
+.actions .btn { flex: 1; padding-inline: 8px; }
+
+/* selection bar */
+.selbar { position: fixed; inset-inline: 12px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px); z-index: 6; max-width: 616px; margin: 0 auto;
+  display: flex; align-items: center; gap: 8px; background: var(--ink); color: var(--bg); border-radius: 16px; padding: 8px 8px 8px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.3); }
+.selbar span { flex: 1; font-weight: 700; }
+.selbar .btn { min-height: 40px; padding: 8px 14px; }
+.selbar .clr { background: transparent; color: inherit; box-shadow: inset 0 0 0 1.5px rgba(128,128,128,.5); }
+
+/* tab bar */
+.tabbar { position: fixed; inset-inline: 0; bottom: 0; z-index: 7; height: calc(var(--nav-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
+  display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border-top: 1px solid var(--line); }
+.tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-decoration: none; color: var(--muted); font-size: 12px; font-weight: 700; }
+.tabbar a.on { color: var(--brand); }
+.tabbar .ic { font-size: 22px; line-height: 1.2; }
+.tabbar .plus { background: var(--brand); color: var(--brand-ink); width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; margin-top: -10px; box-shadow: var(--shadow); }
+.tabbar b { position: absolute; top: 6px; inset-inline-start: calc(50% + 6px); background: var(--brand); color: var(--brand-ink); border-radius: 10px; min-width: 20px; height: 20px; font-size: 12px; display: grid; place-items: center; padding: 0 5px; }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 76px); z-index: 20;
+  background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-weight: 700; box-shadow: 0 6px 24px rgba(0,0,0,.3); max-width: 90vw; text-align: center; }
+.spin { display: inline-block; width: 16px; height: 16px; border: 3px solid currentColor; border-inline-end-color: transparent; border-radius: 50%; animation: sp .7s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
+@media print { .tabbar, .selbar, .actions, .top .iconbtn { display: none !important; } }
+.selbar span { white-space: nowrap; }

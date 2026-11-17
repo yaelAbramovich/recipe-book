@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#d94f30">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="מתכונים">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;900&display=swap">
+  <link rel="stylesheet" href="style.css?v=1">
+  <title>ספר המתכונים</title>
+</head>
+<body>
+  <main id="view" class="view" aria-live="polite"></main>
+
+  <div id="selbar" class="selbar" hidden></div>
+
+  <nav class="tabbar" aria-label="ניווט ראשי">
+    <a href="#/" data-nav="list"><span class="ic">📖</span><span>מתכונים</span></a>
+    <a href="#/add" data-nav="add"><span class="ic plus">＋</span><span>הוספה</span></a>
+    <a href="#/shop" data-nav="shop"><span class="ic">🛒</span><span>קניות</span><b id="badge" hidden>0</b></a>
+  </nav>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="parser.js?v=1"></script>
+  <script src="app.js?v=1"></script>
+</body>
+</html>
