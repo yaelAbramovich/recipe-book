@@ -88,7 +88,7 @@ label.f small { font-weight: 400; color: var(--muted); }
 .seg button[aria-selected=true] { background: var(--brand); color: var(--brand-ink); }
 .note { background: var(--ok-soft); color: var(--ok); border-radius: 12px; padding: 10px 14px; font-size: 14px; margin: 10px 0; }
 .note.err { background: var(--brand-soft); color: var(--danger); }
-.drop { border: 2px dashed var(--line); border-radius: var(--r); padding: 28px 16px; text-align: center; color: var(--muted); background: var(--card); }
+.drop { display: block; cursor: pointer; border: 2px dashed var(--line); border-radius: var(--r); padding: 28px 16px; text-align: center; color: var(--muted); background: var(--card); }
 .drop input { display: none; }
 
 /* shopping list */
