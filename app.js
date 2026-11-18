@@ -16,7 +16,7 @@
     sel: store.get('sel', {}),            // { recipeId: servings }
     checked: store.get('checked', {}),    // { itemId: true }
     extras: store.get('extras', []),      // [{ id, text, done }]
-    crop: null, q: '', url: '', txt: '', view: {}, draft: null, tab: 'text', busy: false, msg: null,
+    crop: null, mark: {}, q: '', url: '', txt: '', view: {}, draft: null, tab: 'text', busy: false, msg: null,
   };
   const save = (k) => store.set(k, S[k]);
   const byId = (id) => S.recipes.find((r) => r.id === id);
@@ -84,24 +84,31 @@
     const n = selIds().length;
     const b = $('#badge'); b.hidden = !n; b.textContent = n;
     const bar = $('#selbar');
-    const show = n > 0 && route().name !== 'shop';
+    const marks = markIds().length;
+    const show = route().name === 'list' && (marks > 0 || n > 0);
     bar.hidden = !show;
-    if (show) bar.innerHTML = `<span>נבחרו ${n} מתכונים</span>
-      <button class="btn clr" data-act="clearsel">נקה</button>
-      <button class="btn" data-act="goshop">🛒 לרשימת קניות</button>`;
+    if (show) bar.innerHTML = marks
+      ? `<span>סומנו ${marks}</span><button class="btn clr" data-act="clearmarks">נקה</button><button class="btn" data-act="addmarked">🛒 הוספה לקניות</button>`
+      : `<span>ברשימת הקניות: ${n}</span><button class="btn" data-act="goshop">לרשימה ←</button>`;
+    const ma = $('#markall');
+    if (ma) ma.textContent = visibleRecipes().length && visibleRecipes().every((r) => S.mark[r.id]) ? 'ביטול סימון' : 'סימון הכל';
   }
+  const markIds = () => Object.keys(S.mark).filter((id) => byId(id));
 
   // ---------- views ----------
   function cardHtml(r) {
-    const on = !!S.sel[r.id];
+    const marked = !!S.mark[r.id], inList = S.sel[r.id] != null;
     const meta = [r.ingredients.filter((l) => !P.isHeaderLine(l)).length + ' מרכיבים', r.servings ? r.servings + ' מנות' : ''].filter(Boolean).join(' · ');
-    return `<article class="card ${on ? 'sel' : ''}">
-      <button class="pick" data-act="toggle" data-id="${r.id}" aria-pressed="${on}" aria-label="${on ? 'הסר מהרשימה' : 'בחר לרשימת קניות'}">${on ? '✔' : '○'}</button>
-      <a class="main" href="#/r/${r.id}"><h3>${esc(r.title)}</h3><p class="meta">${esc(meta)}</p></a></article>`;
+    return `<article class="card ${marked ? 'sel' : ''}">
+      <button class="pick" data-act="mark" data-id="${r.id}" aria-pressed="${marked}" aria-label="${marked ? 'בטל סימון' : 'סמן מתכון'}">${marked ? '✔' : '○'}</button>
+      <a class="main" href="#/r/${r.id}"><h3>${esc(r.title)}</h3><p class="meta">${esc(meta)}${inList ? ' <span class="tag">🛒 ברשימת הקניות</span>' : ''}</p></a></article>`;
+  }
+  function visibleRecipes() {
+    const q = P.norm(S.q).toLowerCase();
+    return S.recipes.filter((r) => !q || (r.title + ' ' + r.ingredients.join(' ')).toLowerCase().includes(q));
   }
   function listHtml() {
-    const q = P.norm(S.q).toLowerCase();
-    const rs = S.recipes.filter((r) => !q || (r.title + ' ' + r.ingredients.join(' ')).toLowerCase().includes(q));
+    const rs = visibleRecipes();
     if (!S.recipes.length) return `<div class="empty"><div class="big">🍲</div><h2>עוד אין מתכונים</h2>
       <p>הוסיפי מתכון מטקסט, מקישור או מקובץ — ואז סמני כמה מתכונים וקבלי רשימת קניות.</p>
       <a class="btn" href="#/add">＋ הוספת מתכון ראשון</a></div>`;
@@ -111,6 +118,7 @@
   function viewList() {
     return `<h1>ספר המתכונים</h1>
       ${S.recipes.length > 3 ? `<div class="search"><input type="search" id="q" placeholder="חיפוש מתכון או מרכיב…" value="${esc(S.q)}"></div>` : ''}
+      ${S.recipes.length > 1 ? `<div class="listhead"><span class="sub">סמני מתכונים ואז הוסיפי אותם יחד לרשימת הקניות</span><button class="linkbtn" id="markall" data-act="markall"></button></div>` : ''}
       <div id="list">${listHtml()}</div>
       ${S.recipes.length ? `<div class="foot"><button data-act="export">⬇ גיבוי</button><button data-act="restore">⬆ שחזור</button></div>` : ''}`;
   }
@@ -488,7 +496,20 @@
     switch (act) {
       case 'toggle': e.preventDefault(); toggleSel(id); render(); break;
       case 'serv': bumpServ(id, +el.dataset.d); render(); break;
-      case 'clearsel': S.sel = {}; save('sel'); render(); break;
+      case 'mark': e.preventDefault(); if (S.mark[id]) delete S.mark[id]; else S.mark[id] = true; $('#list').innerHTML = listHtml(); chrome(); break;
+      case 'markall': {
+        const vis = visibleRecipes();
+        if (vis.every((r) => S.mark[r.id])) vis.forEach((r) => { delete S.mark[r.id]; }); else vis.forEach((r) => { S.mark[r.id] = true; });
+        $('#list').innerHTML = listHtml(); chrome(); break;
+      }
+      case 'clearmarks': S.mark = {}; $('#list').innerHTML = listHtml(); chrome(); break;
+      case 'addmarked': {
+        const ids = markIds(); let added = 0;
+        ids.forEach((rid) => { if (S.sel[rid] == null) { S.sel[rid] = servingsOf(byId(rid)); added++; } });
+        save('sel'); S.mark = {};
+        toast(added === ids.length ? `נוספו ${ids.length} מתכונים לרשימת הקניות` : 'המתכונים ברשימת הקניות');
+        location.hash = '#/shop'; break;
+      }
       case 'goshop': location.hash = '#/shop'; break;
       case 'del': if (confirm('למחוק את המתכון?')) { S.recipes = S.recipes.filter((r) => r.id !== id); delete S.sel[id]; save('recipes'); save('sel'); location.hash = '#/'; toast('המתכון נמחק'); } break;
       case 'tab': S.tab = el.dataset.k; S.msg = null; render(); break;

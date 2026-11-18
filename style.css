@@ -196,3 +196,9 @@ label.f small { font-weight: 400; color: var(--muted); }
 /* shopping button stays compact (sized to its label), edit/delete sit beside it */
 .toolbar .btn { flex: none; padding: 0 16px; }
 @media (max-width: 360px) { .toolbar .btn { padding: 0 10px; } }
+
+/* recipe list: marking + "in shopping list" tag */
+.tag { display: inline-block; background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 0 8px; font-size: 12px; font-weight: 700; margin-inline-start: 4px; white-space: nowrap; }
+.listhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+.listhead .sub { flex: 1; }
+.linkbtn { appearance: none; border: 0; background: none; color: var(--brand); font-weight: 700; cursor: pointer; white-space: nowrap; padding: 6px 4px; }

@@ -237,6 +237,8 @@
    * returns [{ key, name, qty, unit, note, category, from:[titles] }] sorted by category order then name
    */
   function buildShoppingList(entries) {
+    // one row per product (by canonical name); inside it, one running total per unit family
+    // (grams+kg add up, cups add up, ...). Different families can't be added, so they are listed together: "קמח: 2 כוסות + 200 גרם".
     const map = new Map();
     for (const { title, lines, factor } of entries) {
       for (const line of lines) {
@@ -244,33 +246,36 @@
         if (!p || p.header) continue;
         const key = canonName(p.name);
         if (!key) continue;
-        const fam = famKey(p.unit);
-        const mapKey = key + '|' + fam;
-        let it = map.get(mapKey);
-        if (!it) { it = { key, name: p.name, base: null, unit: p.unit, notes: new Set(), from: new Set() }; map.set(mapKey, it); }
+        let it = map.get(key);
+        if (!it) { it = { key, name: p.name, fams: new Map(), from: new Set() }; map.set(key, it); }
         if (p.qty != null) {
-          const base = p.qty * factor * (p.unit ? UNITS[p.unit].f : 1);
-          it.base = (it.base || 0) + base;
-          if (p.unit && it.unit && UNITS[p.unit].fam === UNITS[it.unit].fam && UNITS[p.unit].f > UNITS[it.unit].f) { /* keep smaller as base unit key */ }
-          if (!it.unit && p.unit) it.unit = p.unit;
+          const fam = famKey(p.unit);
+          let f = it.fams.get(fam);
+          if (!f) { f = { base: 0, unit: p.unit }; it.fams.set(fam, f); }
+          f.base += p.qty * factor * (p.unit ? UNITS[p.unit].f : 1);
+          if (!f.unit && p.unit) f.unit = p.unit;
         }
         it.from.add(title);
       }
     }
     const items = [];
-    for (const [mk, it] of map) {
-      let qty = it.base, unit = it.unit;
-      if (qty != null && unit) {
-        // base is in the "base" unit of the family (g or ml, else 1:1)
-        const baseUnit = unit === 'kg' ? 'g' : unit === 'l' ? 'ml' : unit;
-        const nu = niceUnit(qty, baseUnit);
-        qty = nu.v; unit = nu.u;
+    for (const [key, it] of map) {
+      const amounts = [];
+      for (const f of it.fams.values()) {
+        let qty = f.base, unit = f.unit;
+        if (unit) {
+          const nu = niceUnit(qty, unit === 'kg' ? 'g' : unit === 'l' ? 'ml' : unit);   // base is g / ml / count
+          qty = nu.v; unit = nu.u;
+        }
+        amounts.push({ qty: Math.round(qty * 100) / 100, unit });
       }
-      if (qty != null) qty = Math.round(qty * 100) / 100;
+      let text, qty = null, unit = '';
+      if (!amounts.length) text = it.name;
+      else if (amounts.length === 1) { ({ qty, unit } = amounts[0]); text = formatAmount(qty, unit, it.name, key); }
+      else text = displayName(key, it.name, null) + ': ' + amounts.map((a) => formatAmount(a.qty, a.unit, '', null).trim() + (a.unit ? '' : " יח'")).join(' + ');
       items.push({
-        id: mk, key: it.key, name: displayName(it.key, it.name, qty), qty, unit,
-        text: formatAmount(qty, unit, it.name, it.key),
-        category: categorize(it.key), from: [...it.from],
+        id: key, key, name: displayName(key, it.name, qty), qty, unit, text,
+        category: categorize(key), from: [...it.from],
       });
     }
     items.sort((a, b) => CAT_ORDER.indexOf(a.category) - CAT_ORDER.indexOf(b.category) || a.name.localeCompare(b.name, 'he'));
