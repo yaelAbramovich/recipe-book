@@ -175,3 +175,24 @@ label.f small { font-weight: 400; color: var(--muted); }
 .toolbar .stepper span { min-width: 48px; font-size: 18px; }
 .servings label { width: 0; min-width: 100%; }
 .servings label small { display: block; }
+
+/* v2 layout: buttons row on top; below it explanation (right) and quantity control (left) */
+.toolbar { align-items: center; justify-content: flex-start; margin-bottom: 10px; }
+.toolbar .btn { flex: 1; font-size: 15px; }
+.qtyrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 10px 12px; }
+.qtyinfo { flex: 1; min-width: 0; }
+.qtyinfo label { display: block; font-size: 15px; line-height: 1.3; }
+.qtyinfo label small { color: var(--muted); font-weight: 400; }
+.qtyinfo .sub { margin: 2px 0 0; font-size: 13px; line-height: 1.35; }
+.qtyrow .stepper { flex: none; }
+.qty { width: 64px; border: 0; background: transparent; text-align: center; font-weight: 700; font-size: 18px; padding: 6px 0; border-radius: 8px; outline: none; }
+.qty:focus { background: var(--brand-soft); }
+@media (max-width: 360px) { .toolbar .btn { font-size: 14px; } .qty { width: 52px; } .qtyrow { padding: 8px; gap: 8px; } }
+
+/* beat the global input[type=text] rule (width:100%, border, padding) */
+.qtyrow input.qty[type=text] { width: 64px; border: 0; padding: 6px 0; background: transparent; border-radius: 8px; }
+.qtyrow input.qty[type=text]:focus { background: var(--brand-soft); }
+@media (max-width: 360px) { .qtyrow input.qty[type=text] { width: 52px; } }
+/* shopping button stays compact (sized to its label), edit/delete sit beside it */
+.toolbar .btn { flex: none; padding: 0 16px; }
+@media (max-width: 360px) { .toolbar .btn { padding: 0 10px; } }

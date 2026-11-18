@@ -42,6 +42,19 @@
       <button data-act="serv" data-id="${r.id}" data-d="-1" aria-label="להקטין כמויות" title="להקטין כמויות">−</button></div>`;
   }
 
+  // recipe-page stepper: the number is a text field (digits and one dot only)
+  const numStr = (r) => String(Math.round(servingsOf(r) * 100) / 100);
+  function qtyStepper(r) {
+    return `<div class="stepper">
+      <button data-act="serv" data-id="${r.id}" data-d="1" aria-label="להגדיל כמויות" title="להגדיל (חצי מנה)">＋</button>
+      <input id="qty" class="qty" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" maxlength="6" dir="ltr"
+        value="${esc(numStr(r))}" data-id="${r.id}" aria-label="מספר מנות">
+      <button data-act="serv" data-id="${r.id}" data-d="-1" aria-label="להקטין כמויות" title="להקטין (חצי מנה)">−</button></div>`;
+  }
+  function setServings(id, v) {
+    if (S.sel[id] != null) { S.sel[id] = v; save('sel'); } else S.view[id] = v;
+  }
+
   // ---------- routing ----------
   const route = () => {
     const h = location.hash.replace(/^#\/?/, '');
@@ -118,12 +131,15 @@
     return `<div class="top"><a class="iconbtn" href="#/" aria-label="חזרה" style="display:grid;place-items:center;text-decoration:none">→</a><h1>${esc(r.title)}</h1></div>
       ${src}
       <div class="toolbar">
-        <div class="servings"><label>מספר מנות <small>(אפשר גם חצאים)</small></label>${stepper(r)}</div>
-        <button class="btn ${on ? 'soft' : ''}" data-act="toggle" data-id="${r.id}">${on ? '✔ ברשימה' : '🛒 לקניות'}</button>
         <a class="iconbtn" href="#/edit/${r.id}" aria-label="עריכת המתכון" title="עריכה">✏</a>
         <button class="iconbtn del" data-act="del" data-id="${r.id}" aria-label="מחיקת המתכון" title="מחיקה">🗑</button>
+        <button class="btn ${on ? 'soft' : ''}" data-act="toggle" data-id="${r.id}">${on ? '✔ ברשימת הקניות' : '🛒 הוספה לקניות'}</button>
       </div>
-      <p class="sub hint">${servingsOf(r) !== base(r) ? `הכמויות למטה והרשימה שלך הותאמו. <b>(במתכון המקורי: ${P.fmtNum(base(r))})</b>` : 'שינוי מספר המנות מתאים את הכמויות במתכון וברשימת הקניות.'}</p>
+      <div class="qtyrow">
+        <div class="qtyinfo"><label for="qty"><b>מספר מנות</b> <small>(אפשר גם חצאים)</small></label>
+          <p class="sub">${servingsOf(r) !== base(r) ? `הכמויות והרשימה הותאמו. <b>במתכון המקורי: ${P.fmtNum(base(r))}</b>` : 'משנה את הכמויות במתכון וברשימת הקניות.'}</p></div>
+        ${qtyStepper(r)}
+      </div>
       <h2>מצרכים</h2><div class="panel"><ul class="ing">${ing || '<li>—</li>'}</ul></div>
       <h2>אופן הכנה</h2><div class="panel">${r.steps.length ? `<ol class="steps">${r.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="sub" style="padding:12px 0">אין שלבי הכנה</p>'}</div>
     `;
@@ -506,11 +522,22 @@
   });
 
   document.addEventListener('input', (e) => {
+    if (e.target.id === 'qty') {                                  // digits and a single dot only
+      const t = e.target; let v = t.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+      const i = v.indexOf('.'); if (i >= 0) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, '');
+      if (v !== t.value) t.value = v;
+    }
     if (e.target.id === 'url') { S.url = e.target.value; $('#go-url').disabled = S.busy || !S.url.trim(); }
     if (e.target.id === 'txt') { S.txt = e.target.value; $('#go-text').disabled = !S.txt.trim(); }
     if (e.target.id === 'q') { S.q = e.target.value; $('#list').innerHTML = listHtml(); }
   });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'qty') e.target.blur(); });
   document.addEventListener('change', (e) => {
+    if (e.target.id === 'qty') {
+      const v = Math.round(parseFloat(e.target.value) * 100) / 100;
+      if (v > 0) setServings(e.target.dataset.id, Math.min(v, 999)); else toast('אפשר להקליד רק מספר גדול מ־0');
+      render(); return;
+    }
     if (e.target.id === 'file' && e.target.files[0]) handleFile(e.target.files[0]);
   });
   document.addEventListener('submit', (e) => {

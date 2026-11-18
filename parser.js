@@ -218,9 +218,12 @@
 
   /** "2 כוסות קמח" */
   function formatAmount(qty, unit, name, key) {
+    let num;
     if (qty != null && ['', 'cup', 'tbsp', 'tsp'].includes(unit)) qty = Math.max(0.125, Math.round(qty * 8) / 8);   // cooking fractions, not 0.56
+    else if (qty != null && (unit === 'g' || unit === 'ml')) { qty = Math.max(1, Math.round(qty)); num = String(qty); }   // weights: plain numbers, never "78½ גרם"
+    else if (qty != null && (unit === 'kg' || unit === 'l')) { qty = Math.round(qty * 10) / 10; num = String(qty); }
     const parts = [];
-    if (qty != null) parts.push(fmtNum(qty));
+    if (qty != null) parts.push(num != null ? num : fmtNum(qty));
     const ul = unitLabel(unit, qty);
     if (ul) parts.push(ul);
     parts.push(key ? displayName(key, name, qty) : name);
