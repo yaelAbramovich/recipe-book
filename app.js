@@ -18,7 +18,9 @@
     extras: store.get('extras', []),      // [{ id, text, done }]
     crop: null, mark: {}, q: '', url: '', txt: '', view: {}, draft: null, tab: 'text', busy: false, msg: null,
   };
-  const save = (k) => store.set(k, S[k]);
+  S.dirty = store.get('dirty', false);          // recipes changed since the last backup
+  S.backupAt = store.get('backupAt', null);
+  const save = (k) => { store.set(k, S[k]); if (k === 'recipes') { S.dirty = true; store.set('dirty', true); } };
   const byId = (id) => S.recipes.find((r) => r.id === id);
 
   // ---------- helpers ----------
@@ -118,9 +120,11 @@
   function viewList() {
     return `<h1>ספר המתכונים</h1>
       ${S.recipes.length > 3 ? `<div class="search"><input type="search" id="q" placeholder="חיפוש מתכון או מרכיב…" value="${esc(S.q)}"></div>` : ''}
+      ${S.recipes.length && S.dirty ? `<div class="backup"><div><b>המתכונים שמורים רק בטלפון הזה.</b><br>מחיקת נתוני האתר או המטמון תמחק אותם. כדאי לשמור גיבוי.</div><button class="btn" data-act="export">⬇ גיבוי</button></div>` : ''}
       ${S.recipes.length > 1 ? `<div class="listhead"><span class="sub">סמני מתכונים ואז הוסיפי אותם יחד לרשימת הקניות</span><button class="linkbtn" id="markall" data-act="markall"></button></div>` : ''}
       <div id="list">${listHtml()}</div>
-      ${S.recipes.length ? `<div class="foot"><button data-act="export">⬇ גיבוי</button><button data-act="restore">⬆ שחזור</button></div>` : ''}`;
+      ${S.recipes.length ? `<div class="foot"><button data-act="export">⬇ גיבוי</button><button data-act="restore">⬆ שחזור</button></div>
+      ${S.backupAt ? `<p class="sub" style="text-align:center;margin-top:6px">גיבוי אחרון: ${new Date(S.backupAt).toLocaleDateString('he-IL')}</p>` : ''}` : ''}`;
   }
 
   function viewDetail(id) {
@@ -483,11 +487,21 @@
     const next = Math.max(stepSize(r), +(servingsOf(r) + d * stepSize(r)).toFixed(2));
     if (S.sel[id] != null) { S.sel[id] = next; save('sel'); } else S.view[id] = next;
   }
-  function exportBackup() {
-    const blob = new Blob([JSON.stringify({ app: 'recipe-book', exported: new Date().toISOString(), recipes: S.recipes }, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'recipes-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  async function exportBackup() {
+    const name = 'recipes-' + new Date().toISOString().slice(0, 10) + '.json';
+    const json = JSON.stringify({ app: 'recipe-book', exported: new Date().toISOString(), recipes: S.recipes }, null, 1);
+    const blob = new Blob([json], { type: 'application/json' });
+    let done = false;
+    try {                                                      // phones: share sheet -> Files / iCloud / WhatsApp / mail
+      const f = new File([blob], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'גיבוי מתכונים' }); done = true; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }   // user closed the sheet: not backed up yet
+    if (!done) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }
+    S.dirty = false; S.backupAt = Date.now(); store.set('dirty', false); store.set('backupAt', S.backupAt);
+    toast('הגיבוי נשמר ✔'); if (route().name === 'list') render();
   }
 
   document.addEventListener('click', async (e) => {
@@ -583,6 +597,7 @@
   });
 
   // ---------- boot ----------
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) { /* best effort */ }
   render();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then((reg) => { reg.update().catch(() => {}); }).catch(() => {});

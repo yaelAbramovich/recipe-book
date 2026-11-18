@@ -202,3 +202,7 @@ label.f small { font-weight: 400; color: var(--muted); }
 .listhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
 .listhead .sub { flex: 1; }
 .linkbtn { appearance: none; border: 0; background: none; color: var(--brand); font-weight: 700; cursor: pointer; white-space: nowrap; padding: 6px 4px; }
+
+.backup { display: flex; align-items: center; gap: 10px; background: var(--brand-soft); color: var(--ink); border-radius: var(--r); padding: 10px 12px; margin: 0 0 12px; font-size: 14px; line-height: 1.4; }
+.backup > div { flex: 1; }
+.backup .btn { flex: none; min-height: 40px; padding: 0 14px; }
