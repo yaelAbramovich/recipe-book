@@ -140,3 +140,20 @@ label.f small { font-weight: 400; color: var(--muted); }
 .cropwrap.draw { touch-action: none; cursor: crosshair; outline: 3px solid var(--brand); }
 .cropwrap img { width: 100%; display: block; pointer-events: none; -webkit-touch-callout: none; }
 .cropbox { position: absolute; border: 3px solid var(--brand); border-radius: 4px; box-shadow: 0 0 0 9999px rgba(0,0,0,.5); pointer-events: none; }
+
+/* recipe toolbar: everything on one line */
+.toolbar { display: flex; align-items: center; gap: 8px; margin: 12px 0 6px; }
+.toolbar .btn { flex: 1; min-width: 0; padding-inline: 8px; white-space: nowrap; }
+.toolbar .stepper { flex: none; }
+.toolbar .stepper button { width: 36px; }
+.toolbar .stepper span { min-width: 56px; font-size: 15px; }
+.toolbar .iconbtn { display: grid; place-items: center; text-decoration: none; padding: 0; }
+.iconbtn.del { color: var(--danger); }
+.hint { margin: 2px 0 6px; line-height: 1.45; }
+@media (max-width: 360px) {
+  .toolbar { gap: 6px; }
+  .toolbar .btn { font-size: 14px; padding-inline: 4px; }
+  .toolbar .stepper button { width: 30px; }
+  .toolbar .stepper span { min-width: 46px; font-size: 14px; }
+  .toolbar .iconbtn { width: 40px; height: 40px; }
+}

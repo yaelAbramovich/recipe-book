@@ -30,15 +30,15 @@
   const base = (r) => r.servings || 1;
   const servingsOf = (r) => S.sel[r.id] ?? S.view[r.id] ?? base(r);
   const factorOf = (r) => servingsOf(r) / base(r);
-  const stepLabel = (r) => (r.servings ? servingsOf(r) + ' מנות' : '×' + P.fmtNum(servingsOf(r)));
+  const stepLabel = (r) => (r.servings ? servingsOf(r) + ' מנות' : 'פי ' + P.fmtNum(servingsOf(r)));
   const stepSize = (r) => (r.servings ? 1 : 0.5);
   const selIds = () => Object.keys(S.sel).filter((id) => byId(id));
 
   function stepper(r, extraAttr) {
     return `<div class="stepper" ${extraAttr || ''}>
-      <button data-act="serv" data-id="${r.id}" data-d="1" aria-label="הוספה">＋</button>
+      <button data-act="serv" data-id="${r.id}" data-d="1" aria-label="להגדיל כמויות" title="להגדיל כמויות">＋</button>
       <span>${esc(stepLabel(r))}</span>
-      <button data-act="serv" data-id="${r.id}" data-d="-1" aria-label="הפחתה">−</button></div>`;
+      <button data-act="serv" data-id="${r.id}" data-d="-1" aria-label="להקטין כמויות" title="להקטין כמויות">−</button></div>`;
   }
 
   // ---------- routing ----------
@@ -116,16 +116,16 @@
     const src = r.source ? `<p class="sub"><a href="${esc(r.source)}" target="_blank" rel="noopener">מקור המתכון ↗</a></p>` : '';
     return `<div class="top"><a class="iconbtn" href="#/" aria-label="חזרה" style="display:grid;place-items:center;text-decoration:none">→</a><h1>${esc(r.title)}</h1></div>
       ${src}
-      <div class="row" style="align-items:center;margin:12px 0">
+      <div class="toolbar">
         ${stepper(r)}
-        <button class="btn ${on ? 'soft' : ''}" data-act="toggle" data-id="${r.id}">${on ? '✔ ברשימת הקניות' : '🛒 הוסף לרשימת קניות'}</button>
+        <button class="btn ${on ? 'soft' : ''}" data-act="toggle" data-id="${r.id}">${on ? '✔ ברשימה' : '🛒 לקניות'}</button>
+        <a class="iconbtn" href="#/edit/${r.id}" aria-label="עריכת המתכון" title="עריכה">✏</a>
+        <button class="iconbtn del" data-act="del" data-id="${r.id}" aria-label="מחיקת המתכון" title="מחיקה">🗑</button>
       </div>
+      <p class="sub hint">${r.servings ? 'כמה מנות להכין? שינוי המספר מתאים את הכמויות במתכון וברשימת הקניות.' : 'פי כמה להכין? שינוי המספר מכפיל את כל הכמויות במתכון וברשימת הקניות.'}${servingsOf(r) !== base(r) ? ` <b>(במתכון המקורי: ${r.servings ? r.servings + ' מנות' : 'פי 1'})</b>` : ''}</p>
       <h2>מצרכים</h2><div class="panel"><ul class="ing">${ing || '<li>—</li>'}</ul></div>
       <h2>אופן הכנה</h2><div class="panel">${r.steps.length ? `<ol class="steps">${r.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="sub" style="padding:12px 0">אין שלבי הכנה</p>'}</div>
-      <div class="row" style="margin-top:22px">
-        <a class="btn ghost" href="#/edit/${r.id}">✏ עריכה</a>
-        <button class="btn danger" data-act="del" data-id="${r.id}">🗑 מחיקה</button>
-      </div>`;
+    `;
   }
 
   function viewEditor(id) {

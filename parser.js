@@ -185,11 +185,12 @@
   function fmtNum(x) {
     if (x == null || isNaN(x)) return '';
     const whole = Math.floor(x + 1e-9), frac = x - whole;
-    const table = [[0, ''], [0.125, '⅛'], [0.25, '¼'], [1 / 3, '⅓'], [0.5, '½'], [2 / 3, '⅔'], [0.75, '¾'], [1, '']];
+    const table = [[0, ''], [0.125, '⅛'], [0.25, '¼'], [1 / 3, '⅓'], [0.375, '⅜'], [0.5, '½'], [0.625, '⅝'], [2 / 3, '⅔'], [0.75, '¾'], [0.875, '⅞'], [1, '']];
     for (const [v, ch] of table) {
-      if (Math.abs(frac - v) < 0.04) {
+      if (Math.abs(frac - v) < 0.03) {
         const w = v === 1 ? whole + 1 : whole;
-        if (ch) return (w ? w + '' : '') + ch;
+        // LRM on both sides keeps "2½" in reading order inside right-to-left text (otherwise it renders as "½2")
+        if (ch) return w ? '\u200E' + w + ch + '\u200E' : ch;
         return String(w);
       }
     }
