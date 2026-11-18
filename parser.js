@@ -218,6 +218,7 @@
 
   /** "2 כוסות קמח" */
   function formatAmount(qty, unit, name, key) {
+    if (qty != null && ['', 'cup', 'tbsp', 'tsp'].includes(unit)) qty = Math.max(0.125, Math.round(qty * 8) / 8);   // cooking fractions, not 0.56
     const parts = [];
     if (qty != null) parts.push(fmtNum(qty));
     const ul = unitLabel(unit, qty);

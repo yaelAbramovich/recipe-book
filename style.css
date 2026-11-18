@@ -166,3 +166,12 @@ label.f small { font-weight: 400; color: var(--muted); }
   .toolbar .stepper span { min-width: 42px; }
   .toolbar .iconbtn { width: 38px; height: 38px; }
 }
+
+/* servings: label above, +/- with a number below; buttons line up with the stepper */
+.toolbar { align-items: flex-end; }
+.servings { flex: none; display: flex; flex-direction: column; gap: 4px; }
+.servings label { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.servings label small { font-weight: 400; color: var(--muted); }
+.toolbar .stepper span { min-width: 48px; font-size: 18px; }
+.servings label { width: 0; min-width: 100%; }
+.servings label small { display: block; }

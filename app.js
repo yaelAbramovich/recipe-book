@@ -30,14 +30,15 @@
   const base = (r) => r.servings || 1;
   const servingsOf = (r) => S.sel[r.id] ?? S.view[r.id] ?? base(r);
   const factorOf = (r) => servingsOf(r) / base(r);
-  const stepLabel = (r) => (r.servings ? servingsOf(r) + ' מנות' : 'פי ' + P.fmtNum(servingsOf(r)));
-  const stepSize = (r) => (r.servings ? 1 : 0.5);
+  const stepNum = (r) => P.fmtNum(servingsOf(r));                       // 1, 1½, 4 …
+  const stepLabel = (r) => (servingsOf(r) === 1 ? 'מנה' : stepNum(r) + ' מנות');   // used where there is no heading (shopping list)
+  const stepSize = () => 0.5;                                          // halves are allowed everywhere
   const selIds = () => Object.keys(S.sel).filter((id) => byId(id));
 
-  function stepper(r, extraAttr) {
-    return `<div class="stepper" ${extraAttr || ''}>
+  function stepper(r, withUnit) {
+    return `<div class="stepper">
       <button data-act="serv" data-id="${r.id}" data-d="1" aria-label="להגדיל כמויות" title="להגדיל כמויות">＋</button>
-      <span>${esc(stepLabel(r))}</span>
+      <span>${esc(withUnit ? stepLabel(r) : stepNum(r))}</span>
       <button data-act="serv" data-id="${r.id}" data-d="-1" aria-label="להקטין כמויות" title="להקטין כמויות">−</button></div>`;
   }
 
@@ -117,12 +118,12 @@
     return `<div class="top"><a class="iconbtn" href="#/" aria-label="חזרה" style="display:grid;place-items:center;text-decoration:none">→</a><h1>${esc(r.title)}</h1></div>
       ${src}
       <div class="toolbar">
-        ${stepper(r)}
+        <div class="servings"><label>מספר מנות <small>(אפשר גם חצאים)</small></label>${stepper(r)}</div>
         <button class="btn ${on ? 'soft' : ''}" data-act="toggle" data-id="${r.id}">${on ? '✔ ברשימה' : '🛒 לקניות'}</button>
         <a class="iconbtn" href="#/edit/${r.id}" aria-label="עריכת המתכון" title="עריכה">✏</a>
         <button class="iconbtn del" data-act="del" data-id="${r.id}" aria-label="מחיקת המתכון" title="מחיקה">🗑</button>
       </div>
-      <p class="sub hint">${r.servings ? 'כמה מנות להכין? שינוי המספר מתאים את הכמויות במתכון וברשימת הקניות.' : 'פי כמה להכין? שינוי המספר מכפיל את כל הכמויות במתכון וברשימת הקניות.'}${servingsOf(r) !== base(r) ? ` <b>(במתכון המקורי: ${r.servings ? r.servings + ' מנות' : 'פי 1'})</b>` : ''}</p>
+      <p class="sub hint">${servingsOf(r) !== base(r) ? `הכמויות למטה והרשימה שלך הותאמו. <b>(במתכון המקורי: ${P.fmtNum(base(r))})</b>` : 'שינוי מספר המנות מתאים את הכמויות במתכון וברשימת הקניות.'}</p>
       <h2>מצרכים</h2><div class="panel"><ul class="ing">${ing || '<li>—</li>'}</ul></div>
       <h2>אופן הכנה</h2><div class="panel">${r.steps.length ? `<ol class="steps">${r.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="sub" style="padding:12px 0">אין שלבי הכנה</p>'}</div>
     `;
@@ -237,7 +238,7 @@
     const items = currentItems();
     const groups = {};
     items.forEach((i) => (groups[i.category] = groups[i.category] || []).push(i));
-    const recs = ids.map((id) => { const r = byId(id); return `<div class="srecipe"><span class="t">${esc(r.title)}</span>${stepper(r)}
+    const recs = ids.map((id) => { const r = byId(id); return `<div class="srecipe"><span class="t">${esc(r.title)}</span>${stepper(r, true)}
       <button class="x" data-act="toggle" data-id="${r.id}" aria-label="הסר" style="appearance:none;border:0;background:none;font-size:18px;color:var(--muted);padding:8px">✕</button></div>`; }).join('');
     const itemHtml = (i) => `<li class="${S.checked[i.id] ? 'done' : ''}"><label><input type="checkbox" data-act="check" data-id="${esc(i.id)}" ${S.checked[i.id] ? 'checked' : ''}>
       <span class="tx"><span>${esc(i.text)}</span>${i.from.length > 1 || ids.length > 1 ? `<small>${esc(i.from.join(' · '))}</small>` : ''}</span></label></li>`;
