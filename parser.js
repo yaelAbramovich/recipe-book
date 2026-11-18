@@ -113,8 +113,12 @@
     return /[:：]$/.test(t) && !/\d/.test(t) || /^#+\s*/.test(t);
   }
 
+  // leading list markers: bullets, hyphen / en dash / em dash / minus / maqaf, +, * ...
+  const LEAD_MARK = /^[\s•●○▪◦·*►▶✓✔☐□+\-\u2010-\u2015\u2212\u05BE]+/;
+  const stripMark = (s) => s.replace(LEAD_MARK, '');
+
   function cleanBullet(line) {
-    return norm(line).replace(/^[•●○▪◦·*•·▪●○◦►▶✓✔☐□+-]+\s*/, '').replace(/^\[\s?\]\s*/, '')
+    return stripMark(norm(line)).replace(/^\[\s?\]\s*/, '')
       .replace(/^%\s*(?=(כוס|כף|כפית|ק"ג|ליטר|חבילה))/, '½ ');      // OCR often reads "½" as "%"
   }
 
@@ -307,10 +311,10 @@
   }
 
   function cleanStep(l) {
-    return norm(l).replace(/^(\d+[.)]|[•*·▪●○◦+-])\s*/, '').replace(/^שלב\s*\d+\s*[:.-]?\s*/, '');
+    return stripMark(norm(l)).replace(/^\d+[.)]\s*/, '').replace(/^שלב\s*\d+\s*[:.-]?\s*/, '');
   }
 
-  const BULLET = /^[•●○▪◦·*►▶✓✔☐□+-]\s*/;
+  const BULLET = LEAD_MARK;
 
   function parseRecipeText(text) {
     const lines = String(text || '').split(/\r?\n/).map(norm).filter(Boolean);
@@ -342,7 +346,7 @@
     }
 
     // title: first pre line (when it doesn't look like an ingredient)
-    if (pre.length && !looksIng(pre[0]) && pre[0].length <= 80) out.title = pre.shift().replace(/^#+\s*/, '');
+    if (pre.length && !looksIng(pre[0]) && pre[0].length <= 80 && !BULLET.test(pre[0]) && !/[.!:]$/.test(pre[0]) && pre[0].split(' ').length <= 10) out.title = pre.shift().replace(/^#+\s*/, '');
 
     if (!hasIng && !hasStep) {
       for (const l of pre) (looksIng(l) ? out.ingredients : out.steps).push(looksIng(l) ? cleanBullet(l) : cleanStep(l));
@@ -424,7 +428,7 @@
 
   const api = {
     norm, parseIngredient, parseRecipeText, recipeFromHtml, buildShoppingList, formatAmount, fmtNum,
-    categorize, canonName, isHeaderLine, cleanBullet, UNITS, CAT_ORDER,
+    categorize, canonName, isHeaderLine, cleanBullet, cleanStep, UNITS, CAT_ORDER,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RB = api;

@@ -153,7 +153,7 @@
         ${qtyStepper(r)}
       </div>
       <h2>מצרכים</h2><div class="panel"><ul class="ing">${ing || '<li>—</li>'}</ul></div>
-      <h2>אופן הכנה</h2><div class="panel">${r.steps.length ? `<ol class="steps">${r.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>` : '<p class="sub" style="padding:12px 0">אין שלבי הכנה</p>'}</div>
+      <h2>אופן הכנה</h2><div class="panel">${r.steps.length ? `<ol class="steps">${r.steps.map((s) => `<li>${esc(P.cleanStep(s))}</li>`).join('')}</ol>` : '<p class="sub" style="padding:12px 0">אין שלבי הכנה</p>'}</div>
     `;
   }
 
@@ -585,7 +585,7 @@
     if (f.id === 'editor') {
       const lines = (k) => String(fd.get(k) || '').split(/\r?\n/).map((l) => P.norm(l)).filter(Boolean);
       const rec = { title: P.norm(fd.get('title')), servings: Math.round(+fd.get('servings')) || null,
-        ingredients: lines('ingredients'), steps: lines('steps'), source: String(fd.get('source') || '') };
+        ingredients: lines('ingredients').map(P.cleanBullet).filter(Boolean), steps: lines('steps').map(P.cleanStep).filter(Boolean), source: String(fd.get('source') || '') };
       if (!rec.title || !rec.ingredients.length) { toast('צריך שם ולפחות מצרך אחד'); return; }
       const id = f.dataset.id;
       let rid = id;
