@@ -236,6 +236,10 @@
    * mults: { [index]: factor }
    * returns [{ key, name, qty, unit, note, category, from:[titles] }] sorted by category order then name
    */
+  // plain water (also "מים חמים", "מים לבישול", "מי ברז") stays in the recipe but never reaches the shopping list;
+  // products that merely contain the word, like "מי ורדים" or "מי סודה", are still listed
+  const NOT_SHOPPING = /^(מים|מי ברז)(\s+(חמים|קרים|רותחים|פושרים|חמימים|קרירים|מסוננים|בטמפרטורת החדר|ל[א-ת]+))*$/;
+
   function buildShoppingList(entries) {
     // one row per product (by canonical name); inside it, one running total per unit family
     // (grams+kg add up, cups add up, ...). Different families can't be added, so they are listed together: "קמח: 2 כוסות + 200 גרם".
@@ -245,7 +249,7 @@
         const p = parseIngredient(line);
         if (!p || p.header) continue;
         const key = canonName(p.name);
-        if (!key) continue;
+        if (!key || NOT_SHOPPING.test(key)) continue;          // water etc. is not something you buy
         let it = map.get(key);
         if (!it) { it = { key, name: p.name, fams: new Map(), from: new Set() }; map.set(key, it); }
         if (p.qty != null) {
